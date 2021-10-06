@@ -5,7 +5,17 @@ using UnityEngine;
 public class ButtonScript : MonoBehaviour
 {
 
-    public GameObject buttons;
+    [SerializeField] GameObject StartButton;
+    [SerializeField] GameObject PlasticWasteImage;
+
+    public void Awake()
+    {
+        StartButton.SetActive(true);
+        PlasticWasteImage.SetActive(true);
+    }
+
+
+
 
 
 
