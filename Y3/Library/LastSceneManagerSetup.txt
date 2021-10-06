@@ -1,5 +1,5 @@
 sceneSetups:
-- path: C:/Users/Ugnius/Desktop/Enlightenment stone/Assets/Scenes/MainMenu.unity
+- path: Assets/Scenes/MainMenu.unity
   isLoaded: 1
   isActive: 1
   isSubScene: 0
