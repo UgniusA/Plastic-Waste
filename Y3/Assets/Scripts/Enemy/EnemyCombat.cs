@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
+using System.Linq;
 
 public class EnemyCombat : MonoBehaviour
 {
@@ -18,6 +19,9 @@ public class EnemyCombat : MonoBehaviour
     [SerializeField]
     GameObject player;
 
+    [SerializeField]
+    NavMeshAgent agent;
+
     [Header("Cone of Vision Settings")]
 
     [SerializeField]
@@ -27,7 +31,7 @@ public class EnemyCombat : MonoBehaviour
     float visionConeRange;
 
     [SerializeField]
-    bool isAlerted;
+    public bool isAlerted;
 
     [SerializeField]
     LayerMask playerLayer;
@@ -47,6 +51,9 @@ public class EnemyCombat : MonoBehaviour
     public int heavyDamage = 40;
 
     [SerializeField]
+    public int kickDamage = 40;
+
+    [SerializeField]
     float attackRate = 2f;
 
     [SerializeField]
@@ -54,35 +61,47 @@ public class EnemyCombat : MonoBehaviour
 
     [SerializeField]
     bool damageDealt;
+
+    [Header("Patrol Settings")]
+
+    [SerializeField]
+    Transform[] patrolRoute;
+
+    [SerializeField]
+    int curPatrolPos = 0;
     #endregion
-
-    public float speed = 2;
-    private NavMeshAgent agent;
-
 
     void Start()
     {
-        //rb = GetComponent<Rigidbody>();
         agent = GetComponent<NavMeshAgent>();
-
-        Offset();
+        player.GetComponent<Health>().allEnemies.Add(gameObject);
     }
 
     void Update()
     {
-        //ComboTest();
         AttackRate();
-        ControlsTest();
-
+        BlockTest();
         SpottedPLayer();
         LookAtPlayer();
+        Patrol();
 
-        //MoveToPlayer();
-
-        //Damaged();
+        MoveToPlayer();
+    }
+    void AttackRate()
+    {
+        if (Time.time >= nextAttackTime)
+        {
+            if (Input.GetKeyDown(KeyCode.A))
+            {
+                //anim.speed = 1f;
+                anim.SetTrigger("LSlash");//Quick Slash
+                anim.SetTrigger("Combo1");//Heavy Swing
+                anim.SetTrigger("Combo2");//Kick Finish
+            }
+        }
     }
 
-    void ControlsTest()
+    void BlockTest()
     {
         if (Input.GetKey(KeyCode.D))
         {
@@ -104,60 +123,6 @@ public class EnemyCombat : MonoBehaviour
                 anim.SetTrigger("Hit");
             }
         }
-    }
-
-    void LookAtPlayer()
-    {
-        Vector3 targetDirection = player.transform.position - transform.position;
-        float rotSpeed = rotationSpped * Time.deltaTime;
-        Vector3 lookAt = Vector3.RotateTowards(transform.forward, targetDirection, rotSpeed, 0.0f);
-
-        if (isAlerted)
-        {
-            transform.rotation = Quaternion.LookRotation(lookAt);
-        }
-    }
-
-    void AttackRate()
-    {
-        if (Time.time >= nextAttackTime)
-        {
-            if (Input.GetKeyDown(KeyCode.A))
-            {
-                //anim.speed = 1f;
-                anim.SetTrigger("LSlash");
-                anim.SetTrigger("Combo");
-            }
-
-            if (Input.GetKeyDown(KeyCode.S))
-            {
-                //anim.speed = 0.5f;
-                anim.SetTrigger("HSlash");
-                //WaitToAttack();
-            }
-        }
-    }
-
-    public void Light()
-    {
-        player.GetComponent<Health>().TakeDamage(lightDamage);
-    }
-
-    public void Heavy()
-    {
-        player.GetComponent<Health>().TakeDamage(lightDamage * 2);
-    }
-
-    void Block()
-    {
-        var chanceToBlock = Random.Range(0, 1);
-    }
-
-    private void OnDrawGizmosSelected()
-    {
-        if(attackPoint == null)
-            return;
-        Gizmos.DrawSphere(attackPoint.position, attackRange);
     }
 
     void SpottedPLayer()
@@ -183,139 +148,76 @@ public class EnemyCombat : MonoBehaviour
     void MoveToPlayer()
     {
         var playerPos = player.transform.position;
-        Vector3 offsett = new Vector3(playerPos.x + 2, playerPos.y, playerPos.z);
-        float step = speed * Time.deltaTime; // calculate distance to move
+        Vector3 offsett = new Vector3(playerPos.x + 1, playerPos.y, playerPos.z);
 
         if (Vector3.Distance(transform.position, player.transform.position) <= 2)
         {
-            Debug.Log("Found");
+            //Debug.Log("Found");
             anim.SetBool("Running", false);
         }
-        else //if(isAlerted)
+        else if(isAlerted)
         {
-            //agent.destination = player.transform.position;
             agent.destination = offsett;
             anim.SetBool("Running", true);
-            //transform.position = Vector3.MoveTowards(transform.position, player.position, step);
-            //rb.AddForce(transform.forward * speed);
         }
     }
 
-    void Offset()
+    void LookAtPlayer()
     {
-        var playerPos = player.transform.position;
-        Vector3 dir = (player.transform.position - transform.position).normalized;
-        Vector3 offsett = new Vector3(playerPos.x + dir.x, playerPos.y, playerPos.z);
+        Vector3 targetDirection = player.transform.position - transform.position;
+        float rotSpeed = rotationSpped * Time.deltaTime;
+        Vector3 lookAt = Vector3.RotateTowards(transform.forward, targetDirection, rotSpeed, 0.0f);
 
-        //Debug.DrawLine(transform.position, transform.position + dir * 10, Color.red, Mathf.Infinity);
-        transform.position = transform.position + dir * 10;
-        //Instantiate(gameObject, transform.position + dir * 10, Quaternion.identity);
+        if (isAlerted)
+        {
+            transform.rotation = Quaternion.LookRotation(lookAt);
+        }
     }
 
-    #region To delete
-    private IEnumerator WaitForAnimation(Animation animation)
+    void Patrol()
     {
-        do
-        {
-            yield return null;
-        } while (animation.isPlaying);
-    }
+        Vector3 comparePos = new Vector3(patrolRoute[curPatrolPos].position.x, transform.position.y, patrolRoute[curPatrolPos].position.z);
 
-    void Damaged()
-    {
-        if (anim.GetCurrentAnimatorStateInfo(0).IsTag("LSlash"))
+        agent.destination = patrolRoute[curPatrolPos].position;
+
+        if (!isAlerted)
         {
-            if (anim.GetCurrentAnimatorStateInfo(0).normalizedTime == 0.3f)
+            anim.SetBool("Walking", true);
+
+            if (transform.position == comparePos && !isAlerted)
             {
-                player.GetComponent<Health>().TakeDamage(lightDamage);
+                curPatrolPos = (curPatrolPos + 1) % patrolRoute.Length;
             }
         }
 
-        if (anim.GetCurrentAnimatorStateInfo(0).IsTag("HSlash"))
-        {
-            if (anim.GetCurrentAnimatorStateInfo(0).normalizedTime == 0.3f)
-            {
-                player.GetComponent<Health>().TakeDamage(heavyDamage);
-            }
-        }
     }
 
-    void ComboTest()
+    #region Combat Numbers
+    public void Light()
     {
-        var toDamage = player.GetComponent<Health>();
-
-        if (!damageDealt)
-        {
-            if (anim.GetCurrentAnimatorStateInfo(0).IsName("Light Slash"))
-            {
-                toDamage.TakeDamage(lightDamage);
-                damageDealt = true;
-            }
-
-            if (anim.GetCurrentAnimatorStateInfo(0).IsName("Heavy Slash"))
-            {
-                toDamage.TakeDamage(lightDamage * 2);
-                damageDealt = true;
-            }
-        }
-
-        else
-        {
-            //damageDealt = false;
-        }
-
-
-
-
-        /*        if (anim.GetCurrentAnimatorStateInfo(0).IsName("Light Slash"))
-                {
-                    Collider[] hits = Physics.OverlapSphere(attackPoint.position, attackRange, playerLayer);
-
-                    foreach (Collider player in hits)
-                    {
-                        player.GetComponent<Health>().TakeDamage(lightDamage);
-                    }
-                }
-
-                if (anim.GetCurrentAnimatorStateInfo(0).IsName("Heavy Slash"))
-                {
-                    Collider[] hits = Physics.OverlapSphere(attackPoint.position, attackRange, playerLayer);
-
-                    foreach (Collider player in hits)
-                    {
-                        player.GetComponent<Health>().TakeDamage(heavyDamage);
-                        //yield WaitForSeconds(AnimatorClipInfo["Die"].length)
-                    }
-                }*/
+        player.GetComponent<Health>().TakeDamage(lightDamage);
     }
 
-    void WaitToAttack()
+    public void Heavy()
     {
-        nextAttackTime = Time.time + 3f / attackRate;
+        player.GetComponent<Health>().TakeDamage(heavyDamage);
     }
 
-    void LightSlash()
+    public void Kick()
     {
-        anim.SetTrigger("LSlash");
-
-        Collider[] hits = Physics.OverlapSphere(attackPoint.position, attackRange, playerLayer);
-
-        foreach (Collider player in hits)
-        {
-            //player.GetComponent<Health>().TakeDamage(lightDamage);
-        }
+        player.GetComponent<Health>().TakeDamage(kickDamage);
     }
 
-    void HeavySlash()
+    void Block()
     {
-        anim.SetTrigger("HSlash");
-
-        Collider[] hits = Physics.OverlapSphere(attackPoint.position, attackRange, playerLayer);
-
-        foreach (Collider player in hits)
-        {
-            //player.GetComponent<Health>().TakeDamage(heavyDamage);
-        }
+        float chanceToBlock = Random.Range(0, 1);
     }
     #endregion
+
+    private void OnDrawGizmosSelected()
+    {
+        if(attackPoint == null)
+            return;
+        Gizmos.DrawSphere(attackPoint.position, attackRange);
+    }
 }
