@@ -16,6 +16,13 @@ public class ButtonScript : MonoBehaviour
     [SerializeField] GameObject quit;
     [SerializeField] GameObject SettingsMenu;
     [SerializeField] GameObject LastCameraMovement;
+    [SerializeField] GameObject Resolution;
+    [SerializeField] GameObject Audio;
+    [SerializeField] GameObject Graphics;
+    [SerializeField] GameObject FullScreen;
+    [SerializeField] GameObject Back;
+    [SerializeField] GameObject Camera;
+    [SerializeField] GameObject postprocessing;
 
 
     public void Awake()
@@ -80,7 +87,50 @@ public class ButtonScript : MonoBehaviour
         play.SetActive(false);
         quit.SetActive(false);
         SettingsMenu.SetActive(false);
-        yield return new WaitForSeconds(9f);
+        yield return new WaitForSeconds(9.5f);
+        Camera.SetActive(false);
+        postprocessing.SetActive(false);
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex + 1);
+    }
+
+    public void ResolutionButton()
+    {
+        Resolution.SetActive(true);
+    }
+
+    public void VolumeButton()
+    {
+        Audio.SetActive(true);
+    }
+
+    public void GraphicsButton()
+    {
+        Graphics.SetActive(true);
+    }
+    public void doExitGame()
+    {
+        Debug.Log("quit");
+        Application.Quit();
+    }
+
+    public void FullScreenButton()
+    {
+        FullScreen.SetActive(true);
+    }
+
+    public void BackButton()
+    {
+        StartCoroutine(BackButtons());
+    }
+
+    public IEnumerator BackButtons()
+    {
+        SettingsMenu.SetActive(false);
+        yield return new WaitForSeconds(0.5f);
+        play.SetActive(true);
+        yield return new WaitForSeconds(0.5f);
+        settings.SetActive(true);
+        yield return new WaitForSeconds(0.5f);
+        quit.SetActive(true);
     }
 }
